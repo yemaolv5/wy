@@ -1,8 +1,20 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not defined. Please check your environment variables.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+}
 
 export async function getWeatherByCity(city: string) {
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `请查询并返回${city}当前的实时天气信息。
@@ -29,6 +41,7 @@ export async function getWeatherByCity(city: string) {
 }
 
 export async function generateDailyContent(dateStr: string, weatherInfo: string) {
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `请为物业客服生成一份今日早报内容。
@@ -57,6 +70,7 @@ export async function generateDailyContent(dateStr: string, weatherInfo: string)
 }
 
 export async function generateNotice(type: string, details: string) {
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `你是一个专业的物业客服，请根据以下信息生成一份正式的物业通知：
