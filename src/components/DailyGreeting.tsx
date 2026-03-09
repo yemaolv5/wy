@@ -9,8 +9,8 @@ export default function DailyGreeting() {
   const [loading, setLoading] = useState(false);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [content, setContent] = useState<DailyContent | null>(null);
-  const [city, setCity] = useState("北京");
-  const [customCity, setCustomCity] = useState("");
+  const [city, setCity] = useState("呼和浩特");
+  const [inputCity, setInputCity] = useState("呼和浩特");
   const [weather, setWeather] = useState({
     temp: "12°C ~ 22°C",
     condition: "晴转多云",
@@ -47,13 +47,23 @@ export default function DailyGreeting() {
     setLoading(true);
     try {
       const weatherStr = `${weather.condition}, ${weather.temp}, AQI: ${weather.aqi}`;
-      const data = await generateDailyContent(`${dateStr} ${weekday} ${lunar}`, weatherStr);
+      const activeSections = Object.entries(selections)
+        .filter(([key, value]) => value && ['wisdom', 'joke', 'health'].includes(key))
+        .map(([key]) => key);
+      
+      const data = await generateDailyContent(`${dateStr} ${weekday} ${lunar}`, weatherStr, activeSections);
       setContent(data);
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    // First ensure we have the latest weather for the current city
+    await fetchWeather(city);
+    // fetchContent is called by useEffect when weatherLoading becomes false
   };
 
   useEffect(() => {
@@ -66,21 +76,14 @@ export default function DailyGreeting() {
     }
   }, [weatherLoading]);
 
-  const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    if (val !== "custom") {
-      setCity(val);
-    }
-  };
-
-  const handleCustomCitySearch = () => {
-    if (customCity.trim()) {
-      setCity(customCity.trim());
+  const handleCitySearch = () => {
+    if (inputCity.trim()) {
+      setCity(inputCity.trim());
     }
   };
 
   const generateFinalText = () => {
-    let text = `【${city}物业温馨早报】\n\n`;
+    let text = `【${city}**物业**小区温馨早报】\n\n`;
     if (selections.date) {
       text += `📅 日期：${dateStr} ${weekday}\n🏮 农历：${lunar}\n\n`;
     }
@@ -107,40 +110,25 @@ export default function DailyGreeting() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-2xl font-bold text-slate-800">每日温情问候</h2>
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-none">
+          <div className="flex gap-1 flex-1 md:flex-none relative">
             <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-            <select 
-              value={city}
-              onChange={handleCityChange}
-              className="pl-10 pr-8 py-2 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 appearance-none w-full"
-            >
-              <option value="北京">北京</option>
-              <option value="上海">上海</option>
-              <option value="广州">广州</option>
-              <option value="深圳">深圳</option>
-              <option value="杭州">杭州</option>
-              <option value="成都">成都</option>
-              <option value="武汉">武汉</option>
-              <option value="custom">其他城市...</option>
-            </select>
-          </div>
-          <div className="flex gap-1 flex-1 md:flex-none">
             <input 
               type="text" 
               placeholder="输入城市名"
-              value={customCity}
-              onChange={e => setCustomCity(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 w-full md:w-32"
+              value={inputCity}
+              onChange={e => setInputCity(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCitySearch()}
+              className="pl-10 pr-3 py-2 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 w-full md:w-48"
             />
             <button 
-              onClick={handleCustomCitySearch}
-              className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+              onClick={handleCitySearch}
+              className="absolute right-1 top-1 p-1.5 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors"
             >
               <Search className="w-4 h-4 text-slate-600" />
             </button>
           </div>
           <button 
-            onClick={fetchContent}
+            onClick={handleRefresh}
             disabled={loading || weatherLoading}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
           >

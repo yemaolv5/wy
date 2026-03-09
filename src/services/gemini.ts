@@ -40,27 +40,29 @@ export async function getWeatherByCity(city: string) {
   return JSON.parse(response.text || "{}");
 }
 
-export async function generateDailyContent(dateStr: string, weatherInfo: string) {
+export async function generateDailyContent(dateStr: string, weatherInfo: string, sections: string[]) {
   const ai = getAI();
+  const sectionPrompts = {
+    wisdom: "wisdom: 一句励志、处世或邻里和谐的金句。",
+    joke: "joke: 一个简短健康的幽默段子或生活小笑话。",
+    health: "healthTip: 针对当前节气或天气的养生小贴士；foodAdvice: 对应的传统食补或健康饮食建议。"
+  };
+
+  const requestedPrompts = sections
+    .map(s => sectionPrompts[s as keyof typeof sectionPrompts])
+    .filter(Boolean)
+    .join("\n    ");
+
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `请为物业客服生成一份今日早报内容。
     日期信息：${dateStr}
     天气信息：${weatherInfo}
     
-    请包含以下四个部分，并以JSON格式返回：
-    1. wisdom: 一句励志、处世或邻里和谐的金句。
-    2. joke: 一个简短健康的幽默段子或生活小笑话。
-    3. healthTip: 针对当前节气或天气的养生小贴士。
-    4. foodAdvice: 对应的传统食补或健康饮食建议。
+    请根据要求包含以下部分，并以JSON格式返回：
+    ${requestedPrompts}
     
-    返回格式示例：
-    {
-      "wisdom": "...",
-      "joke": "...",
-      "healthTip": "...",
-      "foodAdvice": "..."
-    }`,
+    注意：即使某些部分未请求，也请返回一个完整的JSON对象，未请求的字段可以为空字符串。`,
     config: {
       responseMimeType: "application/json"
     }
